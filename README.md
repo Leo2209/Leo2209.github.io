@@ -43,4 +43,4 @@ farmacovigilancia/
 - IMDRF: Clasificación de incidentes
 
 ## Autor
-[Tu Nombre] - Tesis de [Tu Carrera]
+
