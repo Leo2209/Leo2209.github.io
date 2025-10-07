@@ -247,6 +247,109 @@ class DashboardFarmacovigilancia {
         return classes[tipo] || 'bg-secondary';
     }
 }
+// Funciones para el formulario de reporte
+function guardarReporte() {
+    const form = document.getElementById('reporteIncidenteForm');
+    const formData = new FormData(form);
+    
+    // Convertir FormData a objeto
+    const reporte = {};
+    for (let [key, value] of formData.entries()) {
+        reporte[key] = value;
+    }
+    
+    // Validar campos requeridos
+    if (!reporte.nombreProducto || !reporte.descripcionEvento || !reporte.fechaEvento) {
+        alert('Por favor complete los campos requeridos: Nombre del producto, Descripción del evento y Fecha del evento');
+        return;
+    }
+    
+    // Generar ID único
+    reporte.id = Date.now();
+    reporte.fechaCreacion = new Date().toISOString();
+    
+    // Guardar en localStorage (simulación de base de datos)
+    guardarReporteEnStorage(reporte);
+    
+    // Cerrar modal y limpiar formulario
+    const modal = bootstrap.Modal.getInstance(document.getElementById('formularioReporte'));
+    modal.hide();
+    form.reset();
+    
+    // Actualizar dashboard
+    actualizarDashboard();
+    
+    alert('✅ Reporte guardado exitosamente');
+}
+
+function guardarReporteEnStorage(reporte) {
+    let reportes = JSON.parse(localStorage.getItem('reportesFarmacovigilancia') || '[]');
+    reportes.push(reporte);
+    localStorage.setItem('reportesFarmacovigilancia', JSON.stringify(reportes));
+}
+
+function cargarReportesDelStorage() {
+    return JSON.parse(localStorage.getItem('reportesFarmacovigilancia') || '[]');
+}
+
+// Integrar con el sistema existente
+class DashboardFarmacovigilancia {
+    constructor() {
+        this.dataManager = new FarmacovigilanciaData();
+        this.charts = {};
+        this.inicializarFechas();
+        this.inicializarEventos();
+        this.actualizarDashboard();
+    }
+
+    // ... (el resto del código existente se mantiene igual)
+
+    actualizarDashboard() {
+        const filtros = this.obtenerFiltros();
+        const datosFiltrados = this.dataManager.filtrarDatos(filtros);
+        
+        // Combinar con datos de reportes guardados
+        const reportesGuardados = cargarReportesDelStorage();
+        const todosLosDatos = [...datosFiltrados, ...this.convertirReportesADatos(reportesGuardados)];
+        
+        this.actualizarMetricas(todosLosDatos);
+        this.actualizarGraficos(todosLosDatos);
+        this.actualizarTabla(todosLosDatos);
+    }
+
+    convertirReportesADatos(reportes) {
+        return reportes.map(reporte => ({
+            id: reporte.id,
+            fecha: reporte.fechaEvento,
+            tipo: this.clasificarTipoIncidente(reporte.descripcionEvento),
+            dispositivo: reporte.nombreProducto || 'Dispositivo reportado',
+            gravedad: this.calcularGravedad(reporte.descripcionEvento),
+            descripcion: reporte.descripcionEvento,
+            fuente: 'reporte_usuario'
+        }));
+    }
+
+    clasificarTipoIncidente(descripcion) {
+        const descLower = descripcion.toLowerCase();
+        if (descLower.includes('grave') || descLower.includes('muerte') || descLower.includes('amenaza')) {
+            return 'grave';
+        } else if (descLower.includes('moderado') || descLower.includes('error')) {
+            return 'moderado';
+        }
+        return 'leve';
+    }
+
+    calcularGravedad(descripcion) {
+        const descLower = descripcion.toLowerCase();
+        if (descLower.includes('muerte') || descLower.includes('fatal')) return 5;
+        if (descLower.includes('amenaza') || descLower.includes('grave')) return 4;
+        if (descLower.includes('hospitalización') || descLower.includes('serio')) return 3;
+        if (descLower.includes('moderado') || descLower.includes('error')) return 2;
+        return 1;
+    }
+
+    // ... (el resto del código existente)
+}
 
 // Inicializar dashboard cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
