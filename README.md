@@ -17,14 +17,11 @@ Sistema web para la vigilancia post-comercialización de dispositivos médicos, 
 
 ## Estructura del Proyecto
 
-farmacovigilancia/
-├── index.html # Página principal
-├── assets/
-│ ├── css/
-│ │ └── style.css # Estilos
-│ └── js/
-│ └── script.js # Lógica cliente
-└── README.md # Documentación
+farmacovigilancia-system/          # Tu repositorio
+│
+├── index.html                     # Página principal (HTML)
+├── app.js                         # Lógica de la aplicación (JavaScript)
+└── README.md                      # Documentación (opcional)
 
 
 ## Instalación
