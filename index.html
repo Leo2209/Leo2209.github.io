@@ -3,36 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Farmacovigilancia</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <title>Sistema de Trazabilidad y Farmacovigilancia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .filters {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏥 Sistema de Trazabilidad y Farmacovigilancia</h1>
-            <p>Sistema basado en normativas OMS/FDA</p>
-        </div>
-        
-        <div class="cards">
-            <div class="card">
-                <h3>📊 Total Incidentes</h3>
-                <p id="total-incidentes">2</p>
-            </div>
-            <div class="card grave">
-                <h3>⚠️ Incidentes Graves</h3>
-                <p id="incidentes-graves">1</p>
-            </div>
-            <div class="card">
-                <h3>📋 Dispositivos Activos</h3>
-                <p>3</p>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">🏥 Sistema de Trazabilidad y Farmacovigilancia</h1>
+                <p class="text-center text-muted">Sistema basado en normativas OMS/FDA</p>
             </div>
         </div>
 
-        <!-- TODO: Pega aquí TODO el HTML que ya tenemos -->
-        <!-- El formulario, la tabla, etc. -->
-        
+        <!-- Filtros -->
+        <div class="row filters">
+            <div class="col-md-3">
+                <label class="form-label">Tipo de Incidente</label>
+                <select class="form-select" id="tipoIncidente">
+                    <option value="all">Todos</option>
+                    <option value="grave">Grave</option>
+                    <option value="moderado">Moderado</option>
+                    <option value="leve">Leve</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Dispositivo</label>
+                <select class="form-select" id="dispositivo">
+                    <option value="all">Todos</option>
+                    <option value="monitor">Monitor A</option>
+                    <option value="bomba">Bomba B</option>
+                    <option value="sensor">Sensor C</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha Inicio</label>
+                <input type="date" class="form-control" id="fechaInicio">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha Fin</label>
+                <input type="date" class="form-control" id="fechaFin">
+            </div>
+        </div>
+
+        <!-- Métricas Principales -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="metric-card text-center">
+                    <h3 id="totalIncidentes">0</h3>
+                    <p>Total Incidentes</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <h3 id="incidentesGraves">0</h3>
+                    <p>Incidentes Graves</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <h3 id="dispositivosActivos">0</h3>
+                    <p>Dispositivos Activos</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5>Distribución de Incidentes por Tipo</h5>
+                    <canvas id="chartTipo"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5>Incidentes por Dispositivo</h5>
+                    <canvas id="chartDispositivo"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="chart-container">
+                    <h5>Tendencia Mensual de Incidentes</h5>
+                    <canvas id="chartTendencia"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Datos -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="chart-container">
+                    <h5>Registros Recientes</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="tablaDatos">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Dispositivo</th>
+                                    <th>Gravedad</th>
+                                    <th>Descripción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaBody">
+                                <!-- Datos se llenarán con JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <script src="assets/js/script.js"></script>
+
+    <script src="app.js"></script>
 </body>
 </html>
