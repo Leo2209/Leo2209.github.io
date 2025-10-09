@@ -32,7 +32,334 @@
 </head>
 <body>
     <div class="container-fluid py-4">
-        <!-- ... (todo el contenido HTML que ya tienes, igual) ... -->
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">🏥 Sistema de Trazabilidad y Farmacovigilancia</h1>
+                <p class="text-center text-muted">Sistema basado en normativas OMS/FDA</p>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="row filters">
+            <div class="col-md-3">
+                <label class="form-label">Tipo de Incidente</label>
+                <select class="form-select" id="tipoIncidente">
+                    <option value="all">Todos</option>
+                    <option value="grave">Grave</option>
+                    <option value="moderado">Moderado</option>
+                    <option value="leve">Leve</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Dispositivo</label>
+                <select class="form-select" id="dispositivo">
+                    <option value="all">Todos</option>
+                    <option value="Monitor A">Monitor A</option>
+                    <option value="Bomba B">Bomba B</option>
+                    <option value="Sensor C">Sensor C</option>
+                    <option value="Equipo D">Equipo D</option>
+                    <option value="Monitor E">Monitor E</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha Inicio</label>
+                <input type="date" class="form-control" id="fechaInicio">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha Fin</label>
+                <input type="date" class="form-control" id="fechaFin">
+            </div>
+        </div>
+
+        <!-- Métricas Principales -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="metric-card text-center">
+                    <h3 id="totalIncidentes">0</h3>
+                    <p>Total Incidentes</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <h3 id="incidentesGraves">0</h3>
+                    <p>Incidentes Graves</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <h3 id="dispositivosActivos">0</h3>
+                    <p>Dispositivos Activos</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5>Distribución de Incidentes por Tipo</h5>
+                    <canvas id="chartTipo"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5>Incidentes por Dispositivo</h5>
+                    <canvas id="chartDispositivo"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="chart-container">
+                    <h5>Tendencia Mensual de Incidentes</h5>
+                    <canvas id="chartTendencia"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Datos -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="chart-container">
+                    <h5>Registros Recientes</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="tablaDatos">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Dispositivo</th>
+                                    <th>Gravedad</th>
+                                    <th>Descripción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaBody">
+                                <!-- Datos se llenarán con JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón para abrir formulario -->
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#formularioReporte">
+                    📋 Registrar Nuevo Reporte de Incidente
+                </button>
+            </div>
+        </div>
+
+        <!-- Botón para ver reportes guardados -->
+        <div class="row mt-3">
+            <div class="col-12 text-center">
+                <button class="btn btn-info btn-sm" onclick="verReportesGuardados()">
+                    📊 Ver Reportes Guardados (Consola)
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal del Formulario -->
+        <div class="modal fade" id="formularioReporte" tabindex="-1" aria-labelledby="formularioReporteLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="formularioReporteLabel">Formulario de Reporte de Incidente - Vigilancia Postcomercialización</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="reporteIncidenteForm">
+                            <!-- Sección 1: Detalles de contacto -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h6>1. Detalles de contacto del usuario que reporta (organización/persona)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Nombre de la organización:</label>
+                                            <input type="text" class="form-control" name="nombreOrganizacion">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Nombre de calle y n°:</label>
+                                            <input type="text" class="form-control" name="direccion">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Ciudad y código postal:</label>
+                                            <input type="text" class="form-control" name="ciudadCodigoPostal">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">País:</label>
+                                            <input type="text" class="form-control" name="pais">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Fecha de reporte:</label>
+                                            <input type="date" class="form-control" name="fechaReporte">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Nombre de la persona de contacto:</label>
+                                            <input type="text" class="form-control" name="nombreContacto">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Puesto:</label>
+                                            <input type="text" class="form-control" name="puestoContacto">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Teléfono móvil:</label>
+                                            <input type="tel" class="form-control" name="telefonoContacto">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Correo electrónico:</label>
+                                            <input type="email" class="form-control" name="emailContacto">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Identificador del reporte:</label>
+                                            <input type="text" class="form-control" name="identificadorReporte">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sección 2: Detalles del producto -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-info text-white">
+                                    <h6>2. Detalles del producto</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Nombre del producto/comercial/marca:</label>
+                                            <input type="text" class="form-control" name="nombreProducto">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Código/número(s) de catálogo:</label>
+                                            <input type="text" class="form-control" name="codigoCatalogo">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Número(s) de serie:</label>
+                                            <input type="text" class="form-control" name="numerosSerie">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Número(s) de modelo:</label>
+                                            <input type="text" class="form-control" name="numerosModelo">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Número de lote/carga:</label>
+                                            <input type="text" class="form-control" name="numeroLote">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Fecha(s) de vencimiento:</label>
+                                            <input type="date" class="form-control" name="fechaVencimiento">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Número de versión del software:</label>
+                                            <input type="text" class="form-control" name="versionSoftware">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">UDI-DI/UDI-PI:</label>
+                                            <input type="text" class="form-control" name="udi">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Nombre del fabricante:</label>
+                                            <input type="text" class="form-control" name="nombreFabricante">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Detalles de contacto del fabricante:</label>
+                                            <input type="email" class="form-control" name="contactoFabricante">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Dispositivos/accesorios asociados:</label>
+                                        <textarea class="form-control" name="dispositivosAsociados" rows="2"></textarea>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="adjuntarDocumentos">
+                                        <label class="form-check-label" for="adjuntarDocumentos">
+                                            Se adjuntan copia de instrucciones de uso y fotografías del dispositivo
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sección 3: Detalles del evento -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-warning">
+                                    <h6>3. Detalles del evento</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Describa el procedimiento clínico/analítico durante el cual se hizo la observación:</label>
+                                        <textarea class="form-control" name="procedimientoObservacion" rows="3"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Descripción del evento (qué salió mal, efecto en la salud, sugerencias):</label>
+                                        <textarea class="form-control" name="descripcionEvento" rows="4"></textarea>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Fecha del evento:</label>
+                                            <input type="date" class="form-control" name="fechaEvento">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">% de dispositivos involucrados:</label>
+                                            <input type="number" class="form-control" name="porcentajeDispositivos" min="0" max="100" step="0.1">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Número de dispositivos involucrados:</label>
+                                            <input type="number" class="form-control" name="numeroDispositivos" min="1">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Número de pacientes involucrados:</label>
+                                            <input type="number" class="form-control" name="numeroPacientes" min="0">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Operador/usuario al momento del evento:</label>
+                                            <select class="form-select" name="tipoOperador">
+                                                <option value="">Seleccionar...</option>
+                                                <option value="profesional">Profesional de cuidado de la salud</option>
+                                                <option value="paciente">Paciente/usuario no profesional</option>
+                                                <option value="otro">Otro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Comentarios adicionales:</label>
+                                        <textarea class="form-control" name="comentariosAdicionales" rows="3"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Deslinde de responsabilidades -->
+                            <div class="alert alert-info">
+                                <small>
+                                    <strong>Deslinde de responsabilidades:</strong> El acto de reportar una observación no es una admisión del fabricante, usuario o paciente de responsabilidad por el evento o sus consecuencias.
+                                </small>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" onclick="guardarReporte()">Guardar Reporte</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts al final del body -->
