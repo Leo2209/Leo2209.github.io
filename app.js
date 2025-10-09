@@ -366,3 +366,12 @@ class DashboardFarmacovigilancia {
 document.addEventListener('DOMContentLoaded', function() {
     new DashboardFarmacovigilancia();
 });
+
+function verReportesGuardados() {
+    const reportes = cargarReportesDelStorage();
+    console.log('=== REPORTES GUARDADOS ===');
+    reportes.forEach((reporte, index) => {
+        console.log(`Reporte ${index + 1}:`, reporte);
+    });
+    alert(`Total reportes guardados: ${reportes.length}\nRevisa la consola (F12) para ver los detalles.`);
+}
