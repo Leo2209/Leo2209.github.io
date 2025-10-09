@@ -43,7 +43,8 @@ class FarmacovigilanciaData {
             if (filtros.tipo && filtros.tipo !== 'all' && incidente.tipo !== filtros.tipo) {
                 return false;
             }
-            if (filtros.dispositivo && filtros.dispositivo !== 'all' && !incidente.dispositivo.includes(filtros.dispositivo)) {
+            // ✅ CORRECCIÓN: Cambiar includes por igualdad exacta
+            if (filtros.dispositivo && filtros.dispositivo !== 'all' && incidente.dispositivo !== filtros.dispositivo) {
                 return false;
             }
             if (filtros.fechaInicio && incidente.fecha < filtros.fechaInicio) {
@@ -83,7 +84,9 @@ function guardarReporte() {
     
     // Cerrar modal y limpiar formulario
     const modal = bootstrap.Modal.getInstance(document.getElementById('formularioReporte'));
-    modal.hide();
+    if (modal) {
+        modal.hide();
+    }
     form.reset();
     
     // Actualizar dashboard
@@ -104,7 +107,7 @@ function cargarReportesDelStorage() {
     return JSON.parse(localStorage.getItem('reportesFarmacovigilancia') || '[]');
 }
 
-// Sistema de visualización PRINCIPAL (solo una vez)
+// Sistema de visualización PRINCIPAL
 class DashboardFarmacovigilancia {
     constructor() {
         this.dataManager = new FarmacovigilanciaData();
@@ -119,26 +122,37 @@ class DashboardFarmacovigilancia {
 
     inicializarFechas() {
         const fechas = this.dataManager.incidentes.map(i => i.fecha);
+        if (fechas.length === 0) return;
+        
         const minFecha = fechas.reduce((a, b) => a < b ? a : b);
         const maxFecha = fechas.reduce((a, b) => a > b ? a : b);
         
-        document.getElementById('fechaInicio').value = minFecha;
-        document.getElementById('fechaFin').value = maxFecha;
+        if (document.getElementById('fechaInicio')) {
+            document.getElementById('fechaInicio').value = minFecha;
+        }
+        if (document.getElementById('fechaFin')) {
+            document.getElementById('fechaFin').value = maxFecha;
+        }
     }
 
     inicializarEventos() {
-        document.getElementById('tipoIncidente').addEventListener('change', () => this.actualizarDashboard());
-        document.getElementById('dispositivo').addEventListener('change', () => this.actualizarDashboard());
-        document.getElementById('fechaInicio').addEventListener('change', () => this.actualizarDashboard());
-        document.getElementById('fechaFin').addEventListener('change', () => this.actualizarDashboard());
+        const tipoSelect = document.getElementById('tipoIncidente');
+        const dispositivoSelect = document.getElementById('dispositivo');
+        const fechaInicio = document.getElementById('fechaInicio');
+        const fechaFin = document.getElementById('fechaFin');
+
+        if (tipoSelect) tipoSelect.addEventListener('change', () => this.actualizarDashboard());
+        if (dispositivoSelect) dispositivoSelect.addEventListener('change', () => this.actualizarDashboard());
+        if (fechaInicio) fechaInicio.addEventListener('change', () => this.actualizarDashboard());
+        if (fechaFin) fechaFin.addEventListener('change', () => this.actualizarDashboard());
     }
 
     obtenerFiltros() {
         return {
-            tipo: document.getElementById('tipoIncidente').value,
-            dispositivo: document.getElementById('dispositivo').value,
-            fechaInicio: document.getElementById('fechaInicio').value,
-            fechaFin: document.getElementById('fechaFin').value
+            tipo: document.getElementById('tipoIncidente')?.value || 'all',
+            dispositivo: document.getElementById('dispositivo')?.value || 'all',
+            fechaInicio: document.getElementById('fechaInicio')?.value || '',
+            fechaFin: document.getElementById('fechaFin')?.value || ''
         };
     }
 
@@ -168,6 +182,7 @@ class DashboardFarmacovigilancia {
     }
 
     clasificarTipoIncidente(descripcion) {
+        if (!descripcion) return 'leve';
         const descLower = descripcion.toLowerCase();
         if (descLower.includes('grave') || descLower.includes('muerte') || descLower.includes('amenaza')) {
             return 'grave';
@@ -178,6 +193,7 @@ class DashboardFarmacovigilancia {
     }
 
     calcularGravedad(descripcion) {
+        if (!descripcion) return 1;
         const descLower = descripcion.toLowerCase();
         if (descLower.includes('muerte') || descLower.includes('fatal')) return 5;
         if (descLower.includes('amenaza') || descLower.includes('grave')) return 4;
@@ -187,13 +203,19 @@ class DashboardFarmacovigilancia {
     }
 
     actualizarMetricas(datos) {
-        const total = datos.length;
-        const graves = datos.filter(d => d.tipo === 'grave').length;
-        const dispositivosUnicos = new Set(datos.map(d => d.dispositivo)).size;
+        const totalElement = document.getElementById('totalIncidentes');
+        const gravesElement = document.getElementById('incidentesGraves');
+        const dispositivosElement = document.getElementById('dispositivosActivos');
 
-        document.getElementById('totalIncidentes').textContent = total;
-        document.getElementById('incidentesGraves').textContent = graves;
-        document.getElementById('dispositivosActivos').textContent = dispositivosUnicos;
+        if (totalElement && gravesElement && dispositivosElement) {
+            const total = datos.length;
+            const graves = datos.filter(d => d.tipo === 'grave').length;
+            const dispositivosUnicos = new Set(datos.map(d => d.dispositivo)).size;
+
+            totalElement.textContent = total;
+            gravesElement.textContent = graves;
+            dispositivosElement.textContent = dispositivosUnicos;
+        }
     }
 
     actualizarGraficos(datos) {
@@ -203,7 +225,9 @@ class DashboardFarmacovigilancia {
     }
 
     actualizarChartTipo(datos) {
-        const ctx = document.getElementById('chartTipo').getContext('2d');
+        const ctx = document.getElementById('chartTipo');
+        if (!ctx) return;
+
         const tipos = ['grave', 'moderado', 'leve'];
         const counts = tipos.map(tipo => 
             datos.filter(d => d.tipo === tipo).length
@@ -234,7 +258,9 @@ class DashboardFarmacovigilancia {
     }
 
     actualizarChartDispositivo(datos) {
-        const ctx = document.getElementById('chartDispositivo').getContext('2d');
+        const ctx = document.getElementById('chartDispositivo');
+        if (!ctx) return;
+
         const dispositivos = [...new Set(datos.map(d => d.dispositivo))];
         const counts = dispositivos.map(disp => 
             datos.filter(d => d.dispositivo === disp).length
@@ -266,7 +292,8 @@ class DashboardFarmacovigilancia {
     }
 
     actualizarChartTendencia(datos) {
-        const ctx = document.getElementById('chartTendencia').getContext('2d');
+        const ctx = document.getElementById('chartTendencia');
+        if (!ctx) return;
         
         // Agrupar por mes
         const meses = {};
@@ -308,6 +335,8 @@ class DashboardFarmacovigilancia {
 
     actualizarTabla(datos) {
         const tablaBody = document.getElementById('tablaBody');
+        if (!tablaBody) return;
+
         const datosRecientes = datos
             .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
             .slice(0, 10);
