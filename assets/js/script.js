@@ -62,7 +62,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // CONEXIÓN CON BACKEND - NUEVAS FUNCIONES
 // ============================================================================
 
-const API_URL = 'http://localhost:3000/api';
+// ¿Estamos en internet o en la compu?
+const ESTAMOS_EN_INTERNET = window.location.hostname.includes('github.io');
+
+// Si estamos en internet, usa modo demo; si no, usa el programa real
+const API_URL = ESTAMOS_EN_INTERNET 
+    ? 'MODO_DEMO' 
+    : 'http://localhost:3000/api';
 
 // Función para guardar incidente en el backend
 async function guardarIncidente(incidenteData) {
