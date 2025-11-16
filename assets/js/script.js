@@ -29,12 +29,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const exito = await guardarIncidente(incidenteData);
             
             if (exito) {
-                alert('✅ Incidente reportado exitosamente y guardado en base de datos');
+                alert('✅ Incidente reportado exitosamente');
                 this.reset();
                 
                 // Actualizar dashboard si estamos en esa página
                 if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
                     await cargarEstadisticasReales();
+                    actualizarListaIncidentes();
                 }
             }
         });
@@ -65,66 +66,79 @@ document.addEventListener('DOMContentLoaded', function() {
 // ¿Estamos en internet o en la compu?
 const ESTAMOS_EN_INTERNET = window.location.hostname.includes('github.io');
 
-// Si estamos en internet, usa modo demo; si no, usa el programa real
-const API_URL = ESTAMOS_EN_INTERNET 
-    ? 'MODO_DEMO' 
-    : 'http://localhost:3000/api';
-
 // Función para guardar incidente en el backend
 async function guardarIncidente(incidenteData) {
-    try {
-        console.log('Enviando incidente al backend:', incidenteData);
-        
-        const response = await fetch(`${API_URL}/incidentes`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(incidenteData)
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            console.log('✅ Incidente guardado con ID:', result.id);
-            return true;
-        } else {
-            console.error('❌ Error del servidor:', result.error);
-            alert('❌ Error al reportar incidente: ' + result.error);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ Error de conexión:', error);
-        
-        // Fallback: guardar en localStorage si el backend no está disponible
-        console.warn('⚠️ Backend no disponible, guardando en localStorage...');
+    // SI ESTAMOS EN INTERNET (GitHub)
+    if (ESTAMOS_EN_INTERNET) {
+        console.log('📱 Modo Demo - Guardando en localStorage');
         guardarEnLocalStorage(incidenteData);
+        alert('✅ Incidente reportado (Modo Demo - Los datos se guardaron temporalmente)');
         return true;
+    } 
+    // SI ESTAMOS EN LA COMPUTADORA
+    else {
+        try {
+            console.log('💻 Modo Real - Enviando al backend:', incidenteData);
+            
+            const response = await fetch('http://localhost:3000/api/incidentes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(incidenteData)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                console.log('✅ Incidente guardado con ID:', result.id);
+                alert('✅ Incidente guardado EN BASE DE DATOS REAL');
+                return true;
+            } else {
+                console.error('❌ Error del servidor:', result.error);
+                alert('❌ Error al reportar incidente: ' + result.error);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error de conexión:', error);
+            
+            // Fallback: guardar en localStorage si el backend no está disponible
+            console.warn('⚠️ Backend no disponible, guardando en localStorage...');
+            guardarEnLocalStorage(incidenteData);
+            alert('✅ Incidente guardado en modo respaldo');
+            return true;
+        }
     }
 }
 
 // Función para cargar estadísticas desde el backend
 async function cargarEstadisticasReales() {
-    try {
-        const response = await fetch(`${API_URL}/estadisticas`);
-        
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
-        }
-        
-        const data = await response.json();
-        console.log('📊 Datos cargados del backend:', data);
-        
-        // Actualizar el dashboard con datos reales
-        actualizarDashboard(data);
-        
-    } catch (error) {
-        console.error('❌ Error cargando estadísticas:', error);
-        
-        // Fallback: usar datos de localStorage
-        console.warn('⚠️ Usando datos de localStorage como fallback');
+    // SI ESTAMOS EN INTERNET (GitHub)
+    if (ESTAMOS_EN_INTERNET) {
+        console.log('📱 Modo Demo - Cargando estadísticas de localStorage');
         const datosLocales = obtenerEstadisticasLocales();
         actualizarDashboard(datosLocales);
+    } 
+    // SI ESTAMOS EN LA COMPUTADORA
+    else {
+        try {
+            const response = await fetch('http://localhost:3000/api/estadisticas');
+            
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            
+            const data = await response.json();
+            console.log('📊 Datos cargados del backend:', data);
+            actualizarDashboard(data);
+            
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas:', error);
+            // Fallback: usar datos de localStorage
+            console.warn('⚠️ Usando datos de localStorage como fallback');
+            const datosLocales = obtenerEstadisticasLocales();
+            actualizarDashboard(datosLocales);
+        }
     }
 }
 
@@ -183,18 +197,26 @@ function actualizarGraficoDispositivos(datosDispositivos) {
 
 // Función para actualizar lista de incidentes recientes
 async function actualizarListaIncidentes() {
-    try {
-        const response = await fetch(`${API_URL}/incidentes`);
-        
-        if (response.ok) {
-            const incidentes = await response.json();
-            mostrarIncidentesRecientes(incidentes.slice(0, 5)); // Mostrar últimos 5
-        }
-    } catch (error) {
-        console.error('Error cargando incidentes:', error);
-        // Fallback a localStorage
+    // SI ESTAMOS EN INTERNET (GitHub)
+    if (ESTAMOS_EN_INTERNET) {
         const incidentesLocales = obtenerIncidentesLocales();
         mostrarIncidentesRecientes(incidentesLocales.slice(0, 5));
+    } 
+    // SI ESTAMOS EN LA COMPUTADORA
+    else {
+        try {
+            const response = await fetch('http://localhost:3000/api/incidentes');
+            
+            if (response.ok) {
+                const incidentes = await response.json();
+                mostrarIncidentesRecientes(incidentes.slice(0, 5));
+            }
+        } catch (error) {
+            console.error('Error cargando incidentes:', error);
+            // Fallback a localStorage
+            const incidentesLocales = obtenerIncidentesLocales();
+            mostrarIncidentesRecientes(incidentesLocales.slice(0, 5));
+        }
     }
 }
 
