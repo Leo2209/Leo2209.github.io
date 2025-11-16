@@ -1,50 +1,109 @@
-// Pega aquí TODO el JavaScript que ya tenemos
+// Detectar si estamos en GitHub Pages o local
+const EN_GITHUB = window.location.hostname.includes('github.io');
+
 document.addEventListener('DOMContentLoaded', function() {
     // Configurar fecha actual en formularios
     const fechaInputs = document.querySelectorAll('input[type="date"]');
+    const hoy = new Date().toISOString().split('T')[0];
     fechaInputs.forEach(input => {
-        input.value = new Date().toISOString().split('T')[0];
+        if (!input.value) {
+            input.value = hoy;
+        }
     });
 
-    // Manejar envío de formularios CON BACKEND
+    // Manejar envío de formularios COMPLETOS
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Obtener datos del formulario
+            // Obtener TODOS los datos del formulario
             const formData = new FormData(this);
             const incidenteData = {
-                tipo_incidente: formData.get('tipoIncidente') || 'No especificado',
-                dispositivo: formData.get('dispositivo') || 'Bomba de infusión',
-                modelo: formData.get('modelo') || 'No especificado',
-                lote: formData.get('lote') || 'N/A',
-                fecha_incidente: formData.get('fechaIncidente') || new Date().toISOString().split('T')[0],
-                descripcion: formData.get('descripcion') || 'Sin descripción',
-                severidad: formData.get('severidad') || 'media',
-                reportero: formData.get('reportero') || 'Usuario anónimo'
+                // DATOS DEL REPORTANTE
+                organizacion: formData.get('organizacion') || '',
+                nombre_reportero: formData.get('nombre_reportero') || '',
+                puesto: formData.get('puesto') || '',
+                telefono: formData.get('telefono') || '',
+                email: formData.get('email') || '',
+                identificador_reporte: formData.get('identificador_reporte') || '',
+                codigo_postal: formData.get('codigo_postal') || '',
+                pais: formData.get('pais') || '',
+                fecha_reporte: formData.get('fecha_reporte') || hoy,
+                
+                // DATOS DEL DISPOSITIVO
+                nombre_producto: formData.get('nombre_producto') || '',
+                codigo_catalogo: formData.get('codigo_catalogo') || '',
+                numero_serie: formData.get('numero_serie') || '',
+                numero_modelo: formData.get('numero_modelo') || '',
+                numero_lote: formData.get('numero_lote') || '',
+                fecha_vencimiento: formData.get('fecha_vencimiento') || '',
+                version_software: formData.get('version_software') || '',
+                udi: formData.get('udi') || '',
+                nombre_fabricante: formData.get('nombre_fabricante') || '',
+                direccion_fabricante: formData.get('direccion_fabricante') || '',
+                dispositivo_sterilizado: formData.get('dispositivo_sterilizado') || '',
+                
+                // DATOS DEL EVENTO
+                descripcion_procedimiento: formData.get('descripcion_procedimiento') || '',
+                descripcion_evento: formData.get('descripcion_evento') || '',
+                fecha_evento: formData.get('fecha_evento') || hoy,
+                dispositivos_involucrados: parseInt(formData.get('dispositivos_involucrados')) || 1,
+                pacientes_involucrados: parseInt(formData.get('pacientes_involucrados')) || 0,
+                operador_evento: formData.get('operador_evento') || '',
+                comentarios_solucion: formData.get('comentarios_solucion') || ''
             };
             
-            // Guardar en backend
-            const exito = await guardarIncidente(incidenteData);
+            console.log('📨 Enviando datos completos:', incidenteData);
             
-            if (exito) {
-                alert('✅ Incidente reportado exitosamente');
-                this.reset();
-                
-                // Actualizar dashboard si estamos en esa página
-                if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-                    await cargarEstadisticasReales();
-                    actualizarListaIncidentes();
+            // SI ESTAMOS EN GITHUB (internet)
+            if (EN_GITHUB) {
+                alert('✅ Reporte guardado EXITOSAMENTE\n(Modo Demo - GitHub Pages)');
+                guardarEnLocal(incidenteData);
+            } 
+            // SI ESTAMOS EN LOCAL (con backend)
+            else {
+                try {
+                    const response = await fetch('http://localhost:3000/api/incidentes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(incidenteData)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        alert(`🎉 ¡EXCELENTE! 
+✅ Reporte guardado en BASE DE DATOS
+ID: ${result.id}
+Total de reportes: ${result.total || '1'}`);
+                    } else {
+                        throw new Error('Error del servidor');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('✅ Reporte guardado (Modo Respaldo)\nEl backend no está disponible');
+                    guardarEnLocal(incidenteData);
                 }
             }
+            
+            this.reset();
+            
+            // Restablecer fechas después del reset
+            setTimeout(() => {
+                const fechaInputsAfterReset = this.querySelectorAll('input[type="date"]');
+                fechaInputsAfterReset.forEach(input => {
+                    if (!input.value) {
+                        input.value = hoy;
+                    }
+                });
+            }, 100);
         });
     });
 
     // Funciones para botones
     window.mostrarFormulario = function() {
-        alert('📋 Formulario de reporte de incidentes');
-        // Redirigir al formulario si es necesario
         window.location.href = 'formulario.html';
     };
 
@@ -52,275 +111,61 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('📊 Lista de dispositivos médicos');
     };
 
-    // Cargar estadísticas reales al iniciar el dashboard
+    // Cargar estadísticas si estamos en el dashboard
     if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-        cargarEstadisticasReales();
-        actualizarListaIncidentes();
+        actualizarEstadisticas();
     }
 });
 
-// ============================================================================
-// CONEXIÓN CON BACKEND - NUEVAS FUNCIONES
-// ============================================================================
-
-// ¿Estamos en internet o en la compu?
-const ESTAMOS_EN_INTERNET = window.location.hostname.includes('github.io');
-
-// Función para guardar incidente en el backend
-async function guardarIncidente(incidenteData) {
-    // SI ESTAMOS EN INTERNET (GitHub)
-    if (ESTAMOS_EN_INTERNET) {
-        console.log('📱 Modo Demo - Guardando en localStorage');
-        guardarEnLocalStorage(incidenteData);
-        alert('✅ Incidente reportado (Modo Demo - Los datos se guardaron temporalmente)');
-        return true;
-    } 
-    // SI ESTAMOS EN LA COMPUTADORA
-    else {
-        try {
-            console.log('💻 Modo Real - Enviando al backend:', incidenteData);
-            
-            const response = await fetch('http://localhost:3000/api/incidentes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(incidenteData)
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                console.log('✅ Incidente guardado con ID:', result.id);
-                alert('✅ Incidente guardado EN BASE DE DATOS REAL');
-                return true;
-            } else {
-                console.error('❌ Error del servidor:', result.error);
-                alert('❌ Error al reportar incidente: ' + result.error);
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ Error de conexión:', error);
-            
-            // Fallback: guardar en localStorage si el backend no está disponible
-            console.warn('⚠️ Backend no disponible, guardando en localStorage...');
-            guardarEnLocalStorage(incidenteData);
-            alert('✅ Incidente guardado en modo respaldo');
-            return true;
-        }
-    }
-}
-
-// Función para cargar estadísticas desde el backend
-async function cargarEstadisticasReales() {
-    // SI ESTAMOS EN INTERNET (GitHub)
-    if (ESTAMOS_EN_INTERNET) {
-        console.log('📱 Modo Demo - Cargando estadísticas de localStorage');
-        const datosLocales = obtenerEstadisticasLocales();
-        actualizarDashboard(datosLocales);
-    } 
-    // SI ESTAMOS EN LA COMPUTADORA
-    else {
-        try {
-            const response = await fetch('http://localhost:3000/api/estadisticas');
-            
-            if (!response.ok) {
-                throw new Error('Error en la respuesta del servidor');
-            }
-            
-            const data = await response.json();
-            console.log('📊 Datos cargados del backend:', data);
-            actualizarDashboard(data);
-            
-        } catch (error) {
-            console.error('❌ Error cargando estadísticas:', error);
-            // Fallback: usar datos de localStorage
-            console.warn('⚠️ Usando datos de localStorage como fallback');
-            const datosLocales = obtenerEstadisticasLocales();
-            actualizarDashboard(datosLocales);
-        }
-    }
-}
-
-// Función para actualizar el dashboard con datos
-function actualizarDashboard(data) {
-    // Actualizar métricas principales
-    const totalElement = document.getElementById('totalIncidentes');
-    const semanaElement = document.getElementById('incidentesSemana');
-    
-    if (totalElement) totalElement.textContent = data.total || '0';
-    if (semanaElement) semanaElement.textContent = data.ultimaSemana || '0';
-    
-    // Actualizar gráficos de severidad si existen
-    actualizarGraficoSeveridad(data.porSeveridad);
-    
-    // Actualizar gráficos de dispositivos si existen
-    actualizarGraficoDispositivos(data.porDispositivo);
-}
-
-// Función para actualizar gráfico de severidad
-function actualizarGraficoSeveridad(datosSeveridad) {
-    const contenedor = document.querySelector('.severidad-chart');
-    if (!contenedor || !datosSeveridad) return;
-    
-    let html = '<h4>Distribución por Severidad</h4>';
-    datosSeveridad.forEach(item => {
-        const porcentaje = Math.round((item.count / datosSeveridad.reduce((sum, i) => sum + i.count, 0)) * 100);
-        html += `
-            <div class="severidad-item">
-                <span class="severidad-label">${item.severidad || 'No especificado'}:</span>
-                <span class="severidad-value">${item.count} (${porcentaje}%)</span>
-            </div>
-        `;
-    });
-    
-    contenedor.innerHTML = html;
-}
-
-// Función para actualizar gráfico de dispositivos
-function actualizarGraficoDispositivos(datosDispositivos) {
-    const contenedor = document.querySelector('.dispositivos-chart');
-    if (!contenedor || !datosDispositivos) return;
-    
-    let html = '<h4>Incidentes por Dispositivo</h4>';
-    datosDispositivos.forEach(item => {
-        html += `
-            <div class="dispositivo-item">
-                <span class="dispositivo-label">${item.dispositivo || 'No especificado'}:</span>
-                <span class="dispositivo-value">${item.count}</span>
-            </div>
-        `;
-    });
-    
-    contenedor.innerHTML = html;
-}
-
-// Función para actualizar lista de incidentes recientes
-async function actualizarListaIncidentes() {
-    // SI ESTAMOS EN INTERNET (GitHub)
-    if (ESTAMOS_EN_INTERNET) {
-        const incidentesLocales = obtenerIncidentesLocales();
-        mostrarIncidentesRecientes(incidentesLocales.slice(0, 5));
-    } 
-    // SI ESTAMOS EN LA COMPUTADORA
-    else {
-        try {
-            const response = await fetch('http://localhost:3000/api/incidentes');
-            
-            if (response.ok) {
-                const incidentes = await response.json();
-                mostrarIncidentesRecientes(incidentes.slice(0, 5));
-            }
-        } catch (error) {
-            console.error('Error cargando incidentes:', error);
-            // Fallback a localStorage
-            const incidentesLocales = obtenerIncidentesLocales();
-            mostrarIncidentesRecientes(incidentesLocales.slice(0, 5));
-        }
-    }
-}
-
-// Función para mostrar incidentes recientes en el dashboard
-function mostrarIncidentesRecientes(incidentes) {
-    const contenedor = document.querySelector('.recent-incidents');
-    if (!contenedor) return;
-    
-    if (!incidentes || incidentes.length === 0) {
-        contenedor.innerHTML = '<p>No hay incidentes reportados</p>';
-        return;
-    }
-    
-    let html = '<h4>Incidentes Recientes</h4>';
-    incidentes.forEach(incidente => {
-        const fecha = new Date(incidente.fecha_reporte).toLocaleDateString();
-        html += `
-            <div class="incidente-item">
-                <strong>${incidente.dispositivo}</strong> - ${incidente.tipo_incidente}
-                <br><small>Severidad: ${incidente.severidad} | ${fecha}</small>
-            </div>
-        `;
-    });
-    
-    contenedor.innerHTML = html;
-}
-
-// ============================================================================
-// FALLBACK PARA CUANDO EL BACKEND NO ESTÉ DISPONIBLE
-// ============================================================================
-
-function guardarEnLocalStorage(incidenteData) {
+// Guardar en localStorage como respaldo
+function guardarEnLocal(incidenteData) {
     try {
-        const incidentes = JSON.parse(localStorage.getItem('incidentes_fallback') || '[]');
-        incidenteData.id = Date.now(); // ID temporal
-        incidenteData.fecha_reporte = new Date().toISOString();
+        const incidentes = JSON.parse(localStorage.getItem('incidentes_farmacovigilancia') || '[]');
+        incidenteData.id = Date.now();
+        incidenteData.fecha_registro = new Date().toISOString();
+        incidenteData.modo = 'demo';
         incidentes.push(incidenteData);
-        localStorage.setItem('incidentes_fallback', JSON.stringify(incidentes));
-        console.log('✅ Incidente guardado en localStorage con ID:', incidenteData.id);
+        localStorage.setItem('incidentes_farmacovigilancia', JSON.stringify(incidentes));
+        console.log('✅ Guardado en localStorage con ID:', incidenteData.id);
     } catch (error) {
         console.error('Error guardando en localStorage:', error);
     }
 }
 
-function obtenerEstadisticasLocales() {
+// Actualizar estadísticas del dashboard
+function actualizarEstadisticas() {
     try {
-        const incidentes = JSON.parse(localStorage.getItem('incidentes_fallback') || '[]');
+        const incidentes = JSON.parse(localStorage.getItem('incidentes_farmacovigilancia') || '[]');
         
-        // Calcular estadísticas
-        const total = incidentes.length;
-        const unaSemanaAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const ultimaSemana = incidentes.filter(inc => 
-            new Date(inc.fecha_reporte) >= unaSemanaAtras
-        ).length;
+        // Actualizar métricas
+        const totalElement = document.getElementById('totalIncidentes');
+        const semanaElement = document.getElementById('incidentesSemana');
         
-        // Agrupar por severidad
-        const porSeveridad = Object.groupBy(incidentes, inc => inc.severidad || 'no especificado');
-        const severidadData = Object.entries(porSeveridad).map(([key, values]) => ({
-            severidad: key,
-            count: values.length
-        }));
+        if (totalElement) totalElement.textContent = incidentes.length;
+        if (semanaElement) {
+            const unaSemanaAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const ultimaSemana = incidentes.filter(inc => 
+                new Date(inc.fecha_registro) >= unaSemanaAtras
+            ).length;
+            semanaElement.textContent = ultimaSemana;
+        }
         
-        // Agrupar por dispositivo
-        const porDispositivo = Object.groupBy(incidentes, inc => inc.dispositivo || 'no especificado');
-        const dispositivoData = Object.entries(porDispositivo).map(([key, values]) => ({
-            dispositivo: key,
-            count: values.length
-        }));
-        
-        return {
-            total,
-            ultimaSemana,
-            porSeveridad: severidadData,
-            porDispositivo: dispositivoData
-        };
+        console.log('📊 Estadísticas actualizadas:', incidentes.length, 'reportes');
     } catch (error) {
-        console.error('Error calculando estadísticas locales:', error);
-        return { total: 0, ultimaSemana: 0, porSeveridad: [], porDispositivo: [] };
+        console.error('Error actualizando estadísticas:', error);
     }
 }
 
-function obtenerIncidentesLocales() {
-    try {
-        return JSON.parse(localStorage.getItem('incidentes_fallback') || '[]');
-    } catch (error) {
-        console.error('Error obteniendo incidentes locales:', error);
-        return [];
-    }
-}
-
-// ============================================================================
-// FUNCIONES ADICIONALES PARA EL SISTEMA
-// ============================================================================
-
-// Función para exportar datos (para implementar luego)
+// Función para exportar datos
 window.exportarDatos = function() {
-    alert('📤 Función de exportación de datos - Por implementar en Fase 3');
+    alert('📤 Función de exportación - Por implementar');
 };
 
-// Función para limpiar datos de prueba
+// Función para limpiar datos
 window.limpiarDatos = function() {
-    if (confirm('¿Estás seguro de que quieres limpiar todos los datos de prueba?')) {
-        localStorage.removeItem('incidentes_fallback');
-        alert('🧹 Datos de prueba eliminados');
+    if (confirm('¿Estás seguro de que quieres limpiar todos los datos de demo?')) {
+        localStorage.removeItem('incidentes_farmacovigilancia');
+        alert('🧹 Datos de demo eliminados');
         location.reload();
     }
 };
